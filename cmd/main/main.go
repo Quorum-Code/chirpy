@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -18,6 +19,7 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
 	mux.HandleFunc("/api/reset", apiCfg.middlewareMetricsReset())
 	mux.HandleFunc("GET /admin/metrics", adminMetricsHandler(&apiCfg))
+	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
@@ -35,10 +37,52 @@ func adminMetricsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request
 	}
 }
 
-// func adminMetricsHandler(resp http.ResponseWriter, req *http.Request) {
-// 	resp.WriteHeader(200)
-// 	resp.Write([]byte(fmt.Sprintf(internal.AdminMetricHTML(), 1)))
-//}
+func validateChirpHandler(resp http.ResponseWriter, req *http.Request) {
+	type parameters struct {
+		Body string `json:"body"`
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	params := parameters{}
+	err := decoder.Decode(&params)
+	if err != nil {
+		fmt.Printf("Error decoding parameters: %s", err)
+		resp.WriteHeader(500)
+	}
+
+	type returnVals struct {
+		// CreatedAt    time.Time `json:"created_at"`
+		// ID           int       `json:"id"`
+		// Valid        bool      `json:"valid"`
+		Cleaned_Body string `json:"cleaned_body"`
+	}
+
+	//valid := false
+	if len(params.Body) <= 140 {
+		//valid = true
+		resp.WriteHeader(200)
+
+	} else {
+		resp.WriteHeader(400)
+	}
+
+	respBody := returnVals{
+		// CreatedAt:    time.Now(),
+		// ID:           123,
+		// Valid:        valid,
+		Cleaned_Body: internal.StripProfane(params.Body),
+	}
+	fmt.Println(params.Body)
+	dat, err := json.Marshal(respBody)
+	if err != nil {
+		fmt.Printf("Error marshalling JSON: %s", err)
+		resp.WriteHeader(500)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write(dat)
+}
 
 func healthzHandler(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
