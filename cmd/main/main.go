@@ -14,9 +14,10 @@ func main() {
 	handler := http.StripPrefix("/app", fileServer)
 
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(handler))
-	mux.HandleFunc("/metrics", getMetricsHandler(&apiCfg))
-	mux.HandleFunc("/healthz", healthzHandler)
-	mux.HandleFunc("/reset", apiCfg.middlewareMetricsReset())
+	mux.HandleFunc("GET /api/metrics", getMetricsHandler(&apiCfg))
+	mux.HandleFunc("GET /api/healthz", healthzHandler)
+	mux.HandleFunc("/api/reset", apiCfg.middlewareMetricsReset())
+	mux.HandleFunc("GET /admin/metrics", adminMetricsHandler(&apiCfg))
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
@@ -26,6 +27,18 @@ func main() {
 type apiConfig struct {
 	fileserverHits int
 }
+
+func adminMetricsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		resp.WriteHeader(200)
+		resp.Write([]byte(fmt.Sprintf(internal.AdminMetricHTML(), cfg.fileserverHits)))
+	}
+}
+
+// func adminMetricsHandler(resp http.ResponseWriter, req *http.Request) {
+// 	resp.WriteHeader(200)
+// 	resp.Write([]byte(fmt.Sprintf(internal.AdminMetricHTML(), 1)))
+//}
 
 func healthzHandler(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(200)
