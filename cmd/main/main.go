@@ -14,12 +14,20 @@ func main() {
 	apiCfg := apiConfig{}
 	handler := http.StripPrefix("/app", fileServer)
 
+	db, err := internal.NewDB("./database.json")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	apiCfg.db = *db
+
 	mux.Handle("/app/*", apiCfg.middlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", getMetricsHandler(&apiCfg))
 	mux.HandleFunc("GET /api/healthz", healthzHandler)
 	mux.HandleFunc("/api/reset", apiCfg.middlewareMetricsReset())
 	mux.HandleFunc("GET /admin/metrics", adminMetricsHandler(&apiCfg))
 	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
+	mux.HandleFunc("POST /api/chirps", postChirpsHandler(&apiCfg))
+	mux.HandleFunc("GET /api/chirps", getChirpsHandler(&apiCfg))
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
@@ -28,6 +36,61 @@ func main() {
 
 type apiConfig struct {
 	fileserverHits int
+	db             internal.DB
+}
+
+func postChirpsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	type parameters struct {
+		Body string `json:"body"`
+	}
+
+	return func(resp http.ResponseWriter, req *http.Request) {
+		decoder := json.NewDecoder(req.Body)
+		p := parameters{}
+		err := decoder.Decode(&p)
+		if err != nil {
+			resp.WriteHeader(400)
+			return
+		}
+
+		chirp, err := cfg.db.CreateChirp(p.Body)
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		resp.WriteHeader(201)
+		dat, err := json.Marshal(chirp)
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		resp.Write(dat)
+	}
+}
+
+func getChirpsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		chirps, err := cfg.db.GetChirps()
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		dat, err := json.Marshal(chirps)
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		resp.WriteHeader(200)
+		resp.Write(dat)
+	}
 }
 
 func adminMetricsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
