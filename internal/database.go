@@ -3,16 +3,19 @@ package internal
 import (
 	"encoding/json"
 	"errors"
+	"flag"
+	"fmt"
 	"os"
 	"sort"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type DB struct {
 	path     string
 	database *Database
 	mux      *sync.RWMutex
-	nextId   int
 }
 
 type Chirp struct {
@@ -20,14 +23,38 @@ type Chirp struct {
 	Id   int    `json:"id"`
 }
 
+type User struct {
+	Email string `json:"email"`
+	Id    int    `json:"id"`
+}
+
 type Database struct {
-	Chirps map[int]Chirp `json:"chirps"`
+	Users   map[int]User   `json:"users"`
+	NextUID int            `json:"nextuid"`
+	Chirps  map[int]Chirp  `json:"chirps"`
+	NextCID int            `json:"nextcid"`
+	Hashes  map[int][]byte `json:"hashes"`
 }
 
 func NewDB(path string) (*DB, error) {
-	db := DB{database: &Database{Chirps: make(map[int]Chirp)}, mux: &sync.RWMutex{}, path: path, nextId: 1}
+	database := &Database{Chirps: make(map[int]Chirp), NextCID: 1, Users: make(map[int]User), NextUID: 1}
+	database.Hashes = make(map[int][]byte)
 
-	err := db.ensureDB()
+	db := DB{database: database,
+		mux:  &sync.RWMutex{},
+		path: path}
+
+	dbg := flag.Bool("debug", false, "Enable debug mode")
+	flag.Parse()
+
+	var err error
+	if *dbg {
+		fmt.Println("Starting in Debug Mode")
+		err = db.freshEnsureDB()
+	} else {
+		fmt.Println("Starting in Normal Mode")
+		err = db.ensureDB()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +65,55 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	return &db, nil
+}
+
+func (db *DB) ValidLogin(email string, pass string) (User, bool) {
+	user, ok := db.getUserByEmail(email)
+	if !ok {
+		return User{}, false
+	}
+
+	_, ok = db.database.Hashes[user.Id]
+	if !ok {
+		return User{}, false
+	}
+
+	err := bcrypt.CompareHashAndPassword(db.database.Hashes[user.Id], []byte(pass))
+	if err != nil {
+		return User{}, false
+	} else {
+		return user, true
+	}
+}
+
+func (db *DB) getUserByEmail(email string) (User, bool) {
+	for _, val := range db.database.Users {
+		if val.Email == email {
+			return val, true
+		}
+	}
+
+	return User{}, false
+}
+
+func (db *DB) CreateUser(email string, pass string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	if err != nil {
+		return User{}, err
+	}
+
+	user := User{Email: email, Id: db.database.NextUID}
+	db.database.NextUID++
+	db.database.Users[user.Id] = user
+
+	db.database.Hashes[user.Id] = hash
+
+	go db.writeDB()
+
+	return user, nil
 }
 
 func (db *DB) CreateChirp(body string) (Chirp, error) {
@@ -52,9 +128,9 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
-	chirp := Chirp{Body: body, Id: db.nextId}
+	chirp := Chirp{Body: body, Id: db.database.NextCID}
+	db.database.NextCID++
 	db.database.Chirps[chirp.Id] = chirp
-	db.nextId++
 
 	go db.writeDB()
 
@@ -83,6 +159,29 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 	}
 
 	return chirps, nil
+}
+
+func (db *DB) GetChirp(id int) (Chirp, error) {
+	if db.database.Chirps == nil {
+		return Chirp{}, errors.New("chirp map is nil")
+	}
+
+	chirp, ok := db.database.Chirps[id]
+	if !ok {
+		return Chirp{}, errors.New("ID not found in map")
+	}
+
+	return chirp, nil
+}
+
+func (db *DB) freshEnsureDB() error {
+	dat, err := json.Marshal(db.database)
+	if err != nil {
+		return err
+	}
+
+	os.WriteFile(db.path, dat, 0777)
+	return nil
 }
 
 func (db *DB) ensureDB() error {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Quorum-Code/chirpy/internal"
 )
@@ -28,6 +29,9 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
 	mux.HandleFunc("POST /api/chirps", postChirpsHandler(&apiCfg))
 	mux.HandleFunc("GET /api/chirps", getChirpsHandler(&apiCfg))
+	mux.HandleFunc("GET /api/chirps/{chirpID}", getChirpByIDHandler(&apiCfg))
+	mux.HandleFunc("POST /api/users", postUserHandler(&apiCfg))
+	mux.HandleFunc("POST /api/login", postLoginHandler(&apiCfg))
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
@@ -37,6 +41,106 @@ func main() {
 type apiConfig struct {
 	fileserverHits int
 	db             internal.DB
+}
+
+func postLoginHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	type parameters struct {
+		Email string `json:"email"`
+		Pass  string `json:"password"`
+	}
+
+	return func(resp http.ResponseWriter, req *http.Request) {
+		decoder := json.NewDecoder(req.Body)
+		p := parameters{}
+		err := decoder.Decode(&p)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("unparseable body"))
+			return
+		}
+
+		user, ok := cfg.db.ValidLogin(p.Email, p.Pass)
+
+		if !ok {
+			resp.WriteHeader(401)
+			resp.Write([]byte("incorrect login information"))
+			return
+		} else {
+			dat, err := json.Marshal(user)
+			if err != nil {
+				resp.WriteHeader(500)
+				resp.Write([]byte("something went wrong while loging in, please try again"))
+				return
+			}
+
+			resp.WriteHeader(200)
+			resp.Write(dat)
+			return
+		}
+	}
+}
+
+func postUserHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	type parameters struct {
+		Email string `json:"email"`
+		Pass  string `json:"password"`
+	}
+
+	return func(resp http.ResponseWriter, req *http.Request) {
+		decoder := json.NewDecoder(req.Body)
+		p := parameters{}
+		err := decoder.Decode(&p)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("unparseable body"))
+			return
+		}
+
+		user, err := cfg.db.CreateUser(p.Email, p.Pass)
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte("something went wrong while creating the user"))
+			return
+		}
+
+		dat, err := json.Marshal(user)
+		if err != nil {
+			resp.WriteHeader(500)
+			resp.Write([]byte("something went wrong while decoding the user"))
+			return
+		}
+
+		resp.WriteHeader(201)
+		resp.Write(dat)
+	}
+}
+
+func getChirpByIDHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		id, err := strconv.Atoi(req.PathValue("chirpID"))
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("end must be int"))
+			return
+		}
+
+		chirp, err := cfg.db.GetChirp(id)
+		if err != nil {
+			resp.WriteHeader(404)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		dat, err := json.Marshal(chirp)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		resp.WriteHeader(200)
+		resp.Write(dat)
+	}
 }
 
 func postChirpsHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
