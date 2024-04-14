@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/Quorum-Code/chirpy/internal"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -32,6 +37,23 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{chirpID}", getChirpByIDHandler(&apiCfg))
 	mux.HandleFunc("POST /api/users", postUserHandler(&apiCfg))
 	mux.HandleFunc("POST /api/login", postLoginHandler(&apiCfg))
+	mux.HandleFunc("PUT /api/users", putUsersHandler(&apiCfg))
+
+	godotenv.Load("../../.env")
+	// jwtSecret := os.Getenv("JWT_SECRET")
+
+	// claim := jwt.RegisteredClaims{Issuer: "chirpy",
+	// 	IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+	// 	ExpiresAt: jwt.NewNumericDate(time.Now().Add((time.Hour * 24)).UTC()),
+	// 	Subject:   "12"}
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+	// s, err := token.SignedString([]byte(jwtSecret))
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// }
+
+	// fmt.Println(token.Valid)
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
@@ -43,10 +65,87 @@ type apiConfig struct {
 	db             internal.DB
 }
 
+func putUsersHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	return func(resp http.ResponseWriter, req *http.Request) {
+		decoder := json.NewDecoder(req.Body)
+		p := parameters{}
+		err := decoder.Decode(&p)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("unable to parse body"))
+			return
+		}
+
+		t := req.Header.Get("Authorization")
+		split := strings.Split(t, " ")
+		if len(split) > 1 {
+			t = split[1]
+		}
+
+		type CustomClaim struct {
+			Issuer string
+			Id     int
+			jwt.RegisteredClaims
+		}
+
+		claim := CustomClaim{Issuer: "chirpy"}
+
+		token, err := jwt.ParseWithClaims(t, &claim, func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("JWT_SECRET")), nil
+		})
+		if err != nil {
+			fmt.Println(err.Error())
+			resp.WriteHeader(401)
+			resp.Write([]byte("unauthorized token"))
+			return
+		}
+
+		if !token.Valid {
+			resp.WriteHeader(401)
+			resp.Write([]byte("unauthorized"))
+			return
+		}
+
+		idString, err := token.Claims.GetSubject()
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("error getting subject"))
+			return
+		}
+
+		id, err := strconv.Atoi(idString)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte("bad id"))
+		}
+
+		user, err := cfg.db.UpdateUser(id, p.Email, p.Password)
+		if err != nil {
+			resp.WriteHeader(401)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+
+		dat, err := json.Marshal(user)
+		if err != nil {
+			dat = []byte("Warning: unable to decode user")
+		}
+
+		resp.WriteHeader(200)
+		resp.Write(dat)
+	}
+}
+
 func postLoginHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
 		Pass  string `json:"password"`
+		TOL   int    `json:"expires_in_seconds,omitempty"`
 	}
 
 	return func(resp http.ResponseWriter, req *http.Request) {
@@ -60,23 +159,44 @@ func postLoginHandler(cfg *apiConfig) func(http.ResponseWriter, *http.Request) {
 		}
 
 		user, ok := cfg.db.ValidLogin(p.Email, p.Pass)
-
 		if !ok {
 			resp.WriteHeader(401)
 			resp.Write([]byte("incorrect login information"))
 			return
-		} else {
-			dat, err := json.Marshal(user)
-			if err != nil {
-				resp.WriteHeader(500)
-				resp.Write([]byte("something went wrong while loging in, please try again"))
-				return
-			}
+		}
 
-			resp.WriteHeader(200)
-			resp.Write(dat)
+		jwtSecret := os.Getenv("JWT_SECRET")
+
+		tol := p.TOL
+		if tol == 0 {
+			tol = 86400
+		}
+
+		claim := jwt.RegisteredClaims{Issuer: "chirpy",
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add((time.Second * time.Duration(tol))).UTC()),
+			Subject:   strconv.Itoa(user.Id)}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+		s, err := token.SignedString([]byte(jwtSecret))
+		if err != nil {
+			fmt.Println(err.Error())
+			resp.WriteHeader(402)
 			return
 		}
+
+		type Tk struct {
+			Token string `json:"token"`
+		}
+		dat, err := json.Marshal(Tk{Token: s})
+		if err != nil {
+			resp.WriteHeader(401)
+			resp.Write([]byte("something went wrong while tokening"))
+			return
+		}
+
+		resp.WriteHeader(200)
+		resp.Write(dat)
 	}
 }
 

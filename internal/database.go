@@ -116,6 +116,23 @@ func (db *DB) CreateUser(email string, pass string) (User, error) {
 	return user, nil
 }
 
+func (db *DB) UpdateUser(id int, email string, pass string) (User, error) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	if err != nil {
+		return User{}, err
+	}
+
+	user := User{Email: email, Id: id}
+
+	db.database.Users[user.Id] = user
+	db.database.Hashes[user.Id] = hash
+
+	return user, nil
+}
+
 func (db *DB) CreateChirp(body string) (Chirp, error) {
 	if len(body) > 140 {
 		return Chirp{}, errors.New("chirp is too long")

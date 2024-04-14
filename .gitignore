@@ -1,2 +1,4 @@
 *database.json
 *.sum
+.env
+*.exe
