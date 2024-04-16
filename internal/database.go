@@ -29,16 +29,18 @@ type User struct {
 }
 
 type Database struct {
-	Users   map[int]User   `json:"users"`
-	NextUID int            `json:"nextuid"`
-	Chirps  map[int]Chirp  `json:"chirps"`
-	NextCID int            `json:"nextcid"`
-	Hashes  map[int][]byte `json:"hashes"`
+	Users         map[int]User    `json:"users"`
+	NextUID       int             `json:"nextuid"`
+	Chirps        map[int]Chirp   `json:"chirps"`
+	NextCID       int             `json:"nextcid"`
+	Hashes        map[int][]byte  `json:"hashes"`
+	RefreshTokens map[string]bool `json:"refresh_tokens"`
 }
 
 func NewDB(path string) (*DB, error) {
 	database := &Database{Chirps: make(map[int]Chirp), NextCID: 1, Users: make(map[int]User), NextUID: 1}
 	database.Hashes = make(map[int][]byte)
+	database.RefreshTokens = make(map[string]bool)
 
 	db := DB{database: database,
 		mux:  &sync.RWMutex{},
@@ -65,6 +67,19 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	return &db, nil
+}
+
+func (db *DB) AddRefreshToken(refreshToken string) {
+	db.database.RefreshTokens[refreshToken] = true
+}
+
+func (db *DB) RevokeRefreshToken(refreshToken string) {
+	delete(db.database.RefreshTokens, refreshToken)
+}
+
+func (db *DB) IsValidRefreshToken(refreshToken string) bool {
+	_, ok := db.database.RefreshTokens[refreshToken]
+	return ok
 }
 
 func (db *DB) ValidLogin(email string, pass string) (User, bool) {
