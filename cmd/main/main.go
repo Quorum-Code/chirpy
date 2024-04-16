@@ -10,11 +10,14 @@ import (
 	"time"
 
 	"github.com/Quorum-Code/chirpy/internal"
+	"github.com/Quorum-Code/chirpy/internal/endpointHandler"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	endpointHandler.TestIt()
+
 	mux := http.NewServeMux()
 	fileServer := http.FileServer(http.Dir("../../."))
 	apiCfg := apiConfig{}
