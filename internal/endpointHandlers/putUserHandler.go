@@ -1,5 +1,0 @@
-package endpointhandlers
-
-func TestIt() {
-
-}
