@@ -16,16 +16,21 @@ type DB struct {
 	path     string
 	database *Database
 	mux      *sync.RWMutex
+
+	JWT_SECRET  string
+	polkaApiKey string
 }
 
 type Chirp struct {
-	Body string `json:"body"`
-	Id   int    `json:"id"`
+	Body     string `json:"body"`
+	Id       int    `json:"id"`
+	AuthorId int    `json:"author_id"`
 }
 
 type User struct {
-	Email string `json:"email"`
-	Id    int    `json:"id"`
+	Email       string `json:"email"`
+	Id          int    `json:"id"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 type Database struct {
@@ -43,8 +48,10 @@ func NewDB(path string) (*DB, error) {
 	database.RefreshTokens = make(map[string]bool)
 
 	db := DB{database: database,
-		mux:  &sync.RWMutex{},
-		path: path}
+		mux:         &sync.RWMutex{},
+		path:        path,
+		polkaApiKey: os.Getenv("POLKA_SECRET"),
+		JWT_SECRET:  os.Getenv("JWT_SECRET")}
 
 	dbg := flag.Bool("debug", false, "Enable debug mode")
 	flag.Parse()
@@ -67,6 +74,10 @@ func NewDB(path string) (*DB, error) {
 	}
 
 	return &db, nil
+}
+
+func (db *DB) IsPolkaKey(key string) bool {
+	return key == db.polkaApiKey
 }
 
 func (db *DB) AddRefreshToken(refreshToken string) {
@@ -101,6 +112,11 @@ func (db *DB) ValidLogin(email string, pass string) (User, bool) {
 	}
 }
 
+func (db *DB) GetUserById(id int) (*User, bool) {
+	user, ok := db.database.Users[id]
+	return &user, ok
+}
+
 func (db *DB) getUserByEmail(email string) (User, bool) {
 	for _, val := range db.database.Users {
 		if val.Email == email {
@@ -120,7 +136,7 @@ func (db *DB) CreateUser(email string, pass string) (User, error) {
 		return User{}, err
 	}
 
-	user := User{Email: email, Id: db.database.NextUID}
+	user := User{Email: email, Id: db.database.NextUID, IsChirpyRed: false}
 	db.database.NextUID++
 	db.database.Users[user.Id] = user
 
@@ -148,7 +164,27 @@ func (db *DB) UpdateUser(id int, email string, pass string) (User, error) {
 	return user, nil
 }
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) UpgradeUser(id int) error {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	user, ok := db.GetUserById(id)
+	if !ok {
+		return errors.New("no user found with id")
+	}
+
+	user.IsChirpyRed = true
+
+	db.database.Users[id] = *user
+
+	return nil
+}
+
+func (db *DB) DeleteChirp(cid int) {
+	delete(db.database.Chirps, cid)
+}
+
+func (db *DB) CreateChirp(id int, body string) (Chirp, error) {
 	if len(body) > 140 {
 		return Chirp{}, errors.New("chirp is too long")
 	}
@@ -160,7 +196,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	db.mux.Lock()
 	defer db.mux.Unlock()
 
-	chirp := Chirp{Body: body, Id: db.database.NextCID}
+	chirp := Chirp{Body: body, Id: db.database.NextCID, AuthorId: id}
 	db.database.NextCID++
 	db.database.Chirps[chirp.Id] = chirp
 
@@ -169,7 +205,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DB) GetChirps() ([]Chirp, error) {
+func (db *DB) GetChirpsByUserID(id int) ([]Chirp, error) {
 	err := db.loadDB()
 	if err != nil {
 		return nil, err
@@ -177,6 +213,33 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 
 	db.mux.Lock()
 	defer db.mux.Unlock()
+
+	keys := []int{}
+	for k := range db.database.Chirps {
+		chirp := db.database.Chirps[k]
+		if chirp.AuthorId == id {
+			keys = append(keys, k)
+		}
+	}
+
+	sort.Ints(keys)
+	chirps := []Chirp{}
+	for v := range keys {
+		chirps = append(chirps, db.database.Chirps[keys[v]])
+	}
+
+	return chirps, nil
+}
+
+func (db *DB) GetChirps() ([]Chirp, error) {
+	err := db.loadDB()
+
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
 
 	keys := []int{}
 	for k := range db.database.Chirps {

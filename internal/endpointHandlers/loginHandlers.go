@@ -15,12 +15,12 @@ func (cfg *ApiConfig) PostLoginHandler(resp http.ResponseWriter, req *http.Reque
 	type parameters struct {
 		Email string `json:"email"`
 		Pass  string `json:"password"`
-		TOL   int    `json:"expires_in_seconds,omitempty"`
 	}
 
 	type details struct {
 		Id           int    `json:"id"`
 		Email        string `json:"email"`
+		IsChirpyRed  bool   `json:"is_chirpy_red"`
 		Token        string `json:"token"`
 		RefreshToken string `json:"refresh_token"`
 	}
@@ -70,7 +70,7 @@ func (cfg *ApiConfig) PostLoginHandler(resp http.ResponseWriter, req *http.Reque
 	}
 	cfg.Db.AddRefreshToken(trs)
 
-	d := details{Id: user.Id, Email: user.Email, Token: ts, RefreshToken: trs}
+	d := details{Id: user.Id, Email: user.Email, IsChirpyRed: user.IsChirpyRed, Token: ts, RefreshToken: trs}
 
 	dat, err := json.Marshal(d)
 	if err != nil {

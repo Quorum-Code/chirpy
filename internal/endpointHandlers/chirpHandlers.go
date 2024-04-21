@@ -9,10 +9,56 @@ import (
 	"github.com/Quorum-Code/chirpy/internal"
 )
 
+func (cfg *ApiConfig) GetChirpsByAuthor(resp http.ResponseWriter, req *http.Request) {
+	resp.WriteHeader(400)
+}
+
+func (cfg *ApiConfig) DeleteChirpsHandler(resp http.ResponseWriter, req *http.Request) {
+	cid, err := strconv.Atoi(req.PathValue("chirpID"))
+	if err != nil {
+		resp.WriteHeader(400)
+		resp.Write([]byte("end must be int"))
+		return
+	}
+
+	authData, err := internal.RequestToToken(req)
+	if err != nil {
+		resp.WriteHeader(500)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	chirp, err := cfg.Db.GetChirp(cid)
+	if err != nil {
+		resp.WriteHeader(500)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	uid, err := strconv.Atoi(authData.Claim.Subject)
+	if err != nil {
+		resp.WriteHeader(401)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	if uid == chirp.AuthorId {
+		cfg.Db.DeleteChirp(chirp.Id)
+		resp.WriteHeader(200)
+		resp.Write([]byte("chirp deleted"))
+		return
+	}
+
+	resp.WriteHeader(403)
+	resp.Write([]byte("not your chirp"))
+}
+
 func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
+
+	// verify authorization
 
 	decoder := json.NewDecoder(req.Body)
 	p := parameters{}
@@ -22,7 +68,22 @@ func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	chirp, err := cfg.Db.CreateChirp(p.Body)
+	authData, err := internal.RequestToToken(req)
+	if err != nil {
+		resp.WriteHeader(500)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	subject := authData.Claim.Subject
+	id, err := strconv.Atoi(subject)
+	if err != nil {
+		resp.WriteHeader(401)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	chirp, err := cfg.Db.CreateChirp(id, p.Body)
 	if err != nil {
 		resp.WriteHeader(500)
 		resp.Write([]byte(err.Error()))
@@ -41,11 +102,34 @@ func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Requ
 }
 
 func (cfg *ApiConfig) GetChirpsHandler(resp http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.Db.GetChirps()
+	sid := req.URL.Query().Get("author_id")
+	id, err := strconv.Atoi(sid)
+	var chirps []internal.Chirp
+
 	if err != nil {
-		resp.WriteHeader(500)
-		resp.Write([]byte(err.Error()))
-		return
+		// no id
+		chirps, err = cfg.Db.GetChirps()
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+	} else {
+		// user id
+		chirps, err = cfg.Db.GetChirpsByUserID(id)
+		if err != nil {
+			resp.WriteHeader(400)
+			resp.Write([]byte(err.Error()))
+			return
+		}
+	}
+
+	sort := req.URL.Query().Get("sort")
+	if sort == "desc" {
+		// reverse chirps slice
+		for i, j := 0, len(chirps)-1; i < j; i, j = i+1, j-1 {
+			chirps[i], chirps[j] = chirps[j], chirps[i] //reverse the slice
+		}
 	}
 
 	dat, err := json.Marshal(chirps)

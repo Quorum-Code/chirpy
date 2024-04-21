@@ -10,6 +10,9 @@ import (
 )
 
 func main() {
+	// http://localhost:8000
+
+	godotenv.Load("../../.env")
 
 	mux := http.NewServeMux()
 	fileServer := http.FileServer(http.Dir("../../."))
@@ -36,8 +39,9 @@ func main() {
 	mux.HandleFunc("PUT /api/users", apiCfg.PutUsersHandler)
 	mux.HandleFunc("POST /api/refresh", apiCfg.PostRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.PostRevoke)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.DeleteChirpsHandler)
 
-	godotenv.Load("../../.env")
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.PostPolkaWebhook)
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
