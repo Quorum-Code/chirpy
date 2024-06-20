@@ -25,6 +25,8 @@ func (cfg *ApiConfig) PostLoginHandler(resp http.ResponseWriter, req *http.Reque
 		RefreshToken string `json:"refresh_token"`
 	}
 
+	fmt.Println("login attempt")
+
 	decoder := json.NewDecoder(req.Body)
 	p := parameters{}
 	err := decoder.Decode(&p)

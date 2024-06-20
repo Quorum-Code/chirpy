@@ -33,6 +33,8 @@ func main() {
 	}
 	apiCfg.Db = *db
 
+	mux.HandleFunc("/", apiCfg.IndexHandler)
+
 	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
