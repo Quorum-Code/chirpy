@@ -1,14 +1,22 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"net/http"
 
+	"github.com/flowchartsman/swaggerui"
+	"github.com/joho/godotenv"
+
 	"github.com/Quorum-Code/chirpy/internal"
 	endpointhandlers "github.com/Quorum-Code/chirpy/internal/endpointHandlers"
-	"github.com/joho/godotenv"
 )
 
+//go:embed spec/chirpy.yml
+var spec []byte
+
+// @contact.name	API Support
+// @contact.email	quorumcode@gmail.com
 func main() {
 	// http://localhost:8000
 
@@ -24,6 +32,8 @@ func main() {
 		fmt.Println(err.Error())
 	}
 	apiCfg.Db = *db
+
+	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)
@@ -45,5 +55,8 @@ func main() {
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
+
+	fmt.Println("serving at: localhost:8000")
+	fmt.Println("serving swagger at: localhost:8000/swagger/")
 	server.ListenAndServe()
 }
