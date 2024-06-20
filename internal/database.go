@@ -77,14 +77,23 @@ func NewDB(path string) (*DB, error) {
 }
 
 func (db *DB) IsPolkaKey(key string) bool {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
 	return key == db.polkaApiKey
 }
 
 func (db *DB) AddRefreshToken(refreshToken string) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
 	db.database.RefreshTokens[refreshToken] = true
 }
 
 func (db *DB) RevokeRefreshToken(refreshToken string) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
 	delete(db.database.RefreshTokens, refreshToken)
 }
 
@@ -311,9 +320,6 @@ func (db *DB) loadDB() error {
 }
 
 func (db *DB) writeDB() error {
-	db.mux.Lock()
-	defer db.mux.Unlock()
-
 	dat, err := json.Marshal(db.database)
 	if err != nil {
 		return err
