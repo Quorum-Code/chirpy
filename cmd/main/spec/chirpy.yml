@@ -36,14 +36,31 @@ paths:
     post:
       tags:
         - chirps
+      consumes:
+        - application/json
+      requestBody:
+        description: Create a new chirp
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chirpBody:
+                  type: string
+              required:
+                - body
+            style: form
       responses:
         '200':
-          description: Create a chirp
+          description: Posted the chirp
         '400':
-          description: Failed to Create chirp
+          description: Failed to post the chirp
+      security:
+        - chirp_auth:
+          - write:chirps
 components:
   securitySchemes:
-    petstore_auth:
+    chirp_auth:
       type: oauth2
       flows:
         password:

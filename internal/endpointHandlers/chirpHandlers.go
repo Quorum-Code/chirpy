@@ -3,8 +3,10 @@ package endpointhandlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Quorum-Code/chirpy/internal"
 )
@@ -58,12 +60,25 @@ func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Requ
 		Body string `json:"body"`
 	}
 
+	fmt.Println("Post Chirps")
+
 	// verify authorization
 
 	decoder := json.NewDecoder(req.Body)
 	p := parameters{}
 	err := decoder.Decode(&p)
 	if err != nil {
+		fmt.Println("Bad body")
+
+		buf := new(strings.Builder)
+		_, err := io.Copy(buf, req.Body)
+		if err != nil {
+			fmt.Println(err)
+			resp.WriteHeader(500)
+			return
+		}
+		fmt.Println(buf.String())
+
 		resp.WriteHeader(400)
 		return
 	}

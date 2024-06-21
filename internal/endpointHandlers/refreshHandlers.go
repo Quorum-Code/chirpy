@@ -11,68 +11,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type tokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	IDToken      string `json:"id_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-}
-
-func (cfg *ApiConfig) PostTokenHandler(resp http.ResponseWriter, req *http.Request) {
-	// Load the x-www-form-urlencoded data
-	err := req.ParseForm()
-	if err != nil {
-		fmt.Println(err)
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Check username not empty
-	email := req.FormValue("username")
-	if email == "" {
-		fmt.Println("no username/email provided in request")
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Check password not empty
-	password := req.FormValue("password")
-	if email == "" {
-		fmt.Println("no password provided in request")
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Check is valid login
-	_, ok := cfg.Db.ValidLogin(email, password)
-	if !ok {
-		resp.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// Form the tokenResponse
-	tr := tokenResponse{
-		AccessToken:  "",
-		RefreshToken: "",
-		IDToken:      "",
-		TokenType:    "",
-		ExpiresIn:    1000,
-	}
-
-	// Marshal into json
-	data, err := json.Marshal(tr)
-	if err != nil {
-		fmt.Println("failed to marshal tokenResponse")
-		resp.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// Write response
-	resp.WriteHeader(http.StatusAccepted)
-	resp.Write(data)
-}
-
 func (cfg *ApiConfig) PostRefresh(resp http.ResponseWriter, req *http.Request) {
 	tk := req.Header.Get("Authorization")
 	split := strings.Split(tk, " ")

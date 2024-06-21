@@ -15,11 +15,7 @@ import (
 //go:embed spec/chirpy.yml
 var spec []byte
 
-// @contact.name	API Support
-// @contact.email	quorumcode@gmail.com
 func main() {
-	// http://localhost:8000
-
 	godotenv.Load("../../.env")
 
 	mux := http.NewServeMux()
@@ -39,7 +35,7 @@ func main() {
 
 	mux.HandleFunc("POST /api/signup", apiCfg.PostSignupHandler)
 
-	mux.HandleFunc("POST /oauth/token", apiCfg.PostTokenHandler)
+	mux.HandleFunc("POST /oauth/token", apiCfg.PostToken)
 
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)

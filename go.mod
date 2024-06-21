@@ -9,4 +9,4 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
-require github.com/flowchartsman/swaggerui v0.0.0-20221017034628-909ed4f3701b // indirect
+require github.com/flowchartsman/swaggerui v0.0.0-20221017034628-909ed4f3701b
