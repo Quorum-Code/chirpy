@@ -126,6 +126,18 @@ func (db *DB) GetUserById(id int) (*User, bool) {
 	return &user, ok
 }
 
+func (db *DB) IsEmailUsed(email string) bool {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	for _, user := range db.database.Users {
+		if user.Email == email {
+			return true
+		}
+	}
+	return false
+}
+
 func (db *DB) getUserByEmail(email string) (User, bool) {
 	for _, val := range db.database.Users {
 		if val.Email == email {

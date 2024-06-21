@@ -37,6 +37,8 @@ func main() {
 
 	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 
+	mux.HandleFunc("POST /api/signup", apiCfg.PostSignupHandler)
+
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)
 	mux.HandleFunc("GET /api/healthz", apiCfg.HealthzHandler)

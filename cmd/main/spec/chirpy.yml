@@ -5,9 +5,33 @@ info:
   title: Chirpy
   description: Simple social media CRUD
 tags:
+  - name: signup
+    description: Create an account
   - name: chirps
     description: Posts with text by an author
 paths:
+  /api/signup:
+    post:
+      tags:
+        - signup
+      consumes:
+        - application/json
+      parameters:
+        - in: header
+          name: email
+          description: Account email
+          type: string
+          required: true
+        - in: header
+          name: password
+          description: Account password
+          type: string
+          required: true
+      responses:
+        '200':
+          description: Created the account
+        '400':
+          description: Failed to Create chirp
   /api/chirps:
     post:
       tags:

@@ -11,6 +11,39 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func (cfg *ApiConfig) PostSignupHandler(resp http.ResponseWriter, req *http.Request) {
+	// Get email
+	email := req.Header.Get("email")
+	if email == "" {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("No email in header"))
+		return
+	}
+
+	// Get password
+	password := req.Header.Get("password")
+	if password == "" {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("No password in header"))
+		return
+	}
+
+	// Check email not used
+	if cfg.Db.IsEmailUsed(email) {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte("Email already used by another account"))
+		return
+	}
+
+	_, err := cfg.Db.CreateUser(email, password)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+
+	resp.WriteHeader(http.StatusAccepted)
+	resp.Write([]byte("User created"))
+}
+
 func (cfg *ApiConfig) PostLoginHandler(resp http.ResponseWriter, req *http.Request) {
 	type parameters struct {
 		Email string `json:"email"`
@@ -24,8 +57,6 @@ func (cfg *ApiConfig) PostLoginHandler(resp http.ResponseWriter, req *http.Reque
 		Token        string `json:"token"`
 		RefreshToken string `json:"refresh_token"`
 	}
-
-	fmt.Println("login attempt")
 
 	decoder := json.NewDecoder(req.Body)
 	p := parameters{}
