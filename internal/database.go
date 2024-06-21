@@ -34,12 +34,12 @@ type User struct {
 }
 
 type Database struct {
-	Users         map[int]User    `json:"users"`
 	NextUID       int             `json:"nextuid"`
-	Chirps        map[int]Chirp   `json:"chirps"`
 	NextCID       int             `json:"nextcid"`
-	Hashes        map[int][]byte  `json:"hashes"`
+	Chirps        map[int]Chirp   `json:"chirps"`
+	Users         map[int]User    `json:"users"`
 	RefreshTokens map[string]bool `json:"refresh_tokens"`
+	Hashes        map[int][]byte  `json:"hashes"`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -332,7 +332,7 @@ func (db *DB) loadDB() error {
 }
 
 func (db *DB) writeDB() error {
-	dat, err := json.Marshal(db.database)
+	dat, err := json.MarshalIndent(db.database, "", "  ")
 	if err != nil {
 		return err
 	}

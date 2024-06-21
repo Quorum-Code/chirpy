@@ -39,6 +39,8 @@ func main() {
 
 	mux.HandleFunc("POST /api/signup", apiCfg.PostSignupHandler)
 
+	mux.HandleFunc("POST /oauth/token", apiCfg.PostTokenHandler)
+
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)
 	mux.HandleFunc("GET /api/healthz", apiCfg.HealthzHandler)
@@ -60,7 +62,6 @@ func main() {
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
 
-	fmt.Println("serving at: localhost:8000")
-	fmt.Println("serving swagger at: localhost:8000/swagger/")
+	fmt.Println("serving SwaggerUI at: localhost:8000/swagger/")
 	server.ListenAndServe()
 }
