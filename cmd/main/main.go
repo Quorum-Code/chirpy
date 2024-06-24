@@ -31,11 +31,14 @@ func main() {
 
 	mux.HandleFunc("/", apiCfg.IndexHandler)
 
-	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
-
 	mux.HandleFunc("POST /api/signup", apiCfg.PostSignupHandler)
 
 	mux.HandleFunc("POST /oauth/token", apiCfg.PostToken)
+
+	mux.HandleFunc("POST /chirps", apiCfg.PostChirp)
+	mux.HandleFunc("GET /chirps", apiCfg.GetChirps)
+	mux.HandleFunc("PUT /chirps{id}", apiCfg.PutChirp)
+	mux.HandleFunc("DELETE /chirps{id}", apiCfg.DeleteChirp)
 
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)
@@ -54,6 +57,8 @@ func main() {
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.DeleteChirpsHandler)
 
 	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.PostPolkaWebhook)
+
+	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
 
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}

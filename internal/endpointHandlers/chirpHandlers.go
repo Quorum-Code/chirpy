@@ -11,6 +11,37 @@ import (
 	"github.com/Quorum-Code/chirpy/internal"
 )
 
+func (cfg *ApiConfig) PostChirp(resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (cfg *ApiConfig) GetChirps(resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
+
+}
+
+func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
+	cid, err := strconv.Atoi(req.PathValue("chirpID"))
+	if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = cfg.Db.UserDeleteChirp(0, cid)
+	if err.Error() == "not authorized" {
+		resp.WriteHeader(http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp.WriteHeader(http.StatusAccepted)
+}
+
 func (cfg *ApiConfig) GetChirpsByAuthor(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(400)
 }

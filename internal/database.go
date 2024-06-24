@@ -121,6 +121,10 @@ func (db *DB) ValidLogin(email string, pass string) (User, bool) {
 	}
 }
 
+func (db *DB) UserDeleteChirp(userID, chirpID int) error {
+	return nil
+}
+
 func (db *DB) GetUserById(id int) (*User, bool) {
 	user, ok := db.database.Users[id]
 	return &user, ok
