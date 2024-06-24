@@ -3,17 +3,18 @@ openapi: 3.0.0
 info:
   version: 1.0.0
   title: Chirpy
-  description: Simple social media CRUD
+  description: Simple social media CRUD (Create, Read, Update, Delete)
 tags:
-  - name: signup
-    description: Create an account
-  - name: chirps
+  - name: account
+    description: Account functions
+  - name: chirp
     description: Posts with text by an author
 paths:
   /api/signup:
     post:
       tags:
-        - signup
+        - account
+      summary: Creates a chirpy account
       consumes:
         - application/json
       parameters:
@@ -31,11 +32,12 @@ paths:
         '200':
           description: Created the account
         '400':
-          description: Failed to Create chirp
+          description: Failed to Create account
   /api/chirps:
     post:
       tags:
-        - chirps
+        - chirp
+      summary: Creates a chirp
       consumes:
         - application/json
       requestBody:
@@ -55,6 +57,55 @@ paths:
           description: Posted the chirp
         '400':
           description: Failed to post the chirp
+      security:
+        - chirp_auth:
+          - write:chirps
+    get:
+      tags:
+        - chirp
+      summary: Gets 10 newest chirps
+      consumes:
+        - application/json
+      responses:
+        '200':
+          description: Got the chirps
+        '400':
+          description: Failed to get chirps
+      security:
+        - chirp_auth:
+          - write:chirps
+  /api/chirps{chirpId}:
+    put:
+      tags:
+        - chirp
+      summary: Updates a chirp
+      consumes:
+        - application/json
+      parameters:
+        - id: chirpId
+          in: path
+          description: ID of the chirp to update
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        description: Updates a new chirp
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chirpBody:
+                  type: string
+              required:
+                - body
+            style: form
+      responses:
+        '200':
+          description: Updated the chirp
+        '400':
+          description: Failed to update the chirp
       security:
         - chirp_auth:
           - write:chirps
