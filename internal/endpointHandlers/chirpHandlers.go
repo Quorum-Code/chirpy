@@ -12,7 +12,51 @@ import (
 )
 
 func (cfg *ApiConfig) PostChirp(resp http.ResponseWriter, req *http.Request) {
-	fmt.Println("postChirp")
+	type body struct {
+		ChirpBody string `json:"chirpBody"`
+	}
+
+	// Check valid user
+	auth, err := internal.RequestToToken(req)
+	if err != nil {
+		resp.WriteHeader(http.StatusUnauthorized)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+	if auth.Claim.Issuer != "chirpy-access" {
+		resp.WriteHeader(http.StatusUnauthorized)
+		resp.Write([]byte("no chirpy-access"))
+		return
+	}
+
+	// Get body values
+	decoder := json.NewDecoder(req.Body)
+	b := body{}
+	err = decoder.Decode(&b)
+	if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	// Get userID
+	userID, err := strconv.Atoi(auth.Claim.Subject)
+	if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	// Create chirp
+	_, err = cfg.Db.CreateChirp(userID, b.ChirpBody)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		resp.Write([]byte(err.Error()))
+		return
+	}
+
+	// Return 200
+	resp.WriteHeader(http.StatusOK)
 }
 
 func (cfg *ApiConfig) GetChirps(resp http.ResponseWriter, req *http.Request) {
@@ -35,9 +79,11 @@ func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resp.WriteHeader(http.StatusAccepted)
+	// Return 201
+	resp.WriteHeader(http.StatusCreated)
 }
 
+// Handles request to delete chirp by ID
 func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
 	cid, err := strconv.Atoi(req.PathValue("chirpID"))
 	if err != nil {
@@ -52,7 +98,7 @@ func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resp.WriteHeader(http.StatusAccepted)
+	resp.WriteHeader(http.StatusNoContent)
 }
 
 func (cfg *ApiConfig) GetChirpsByAuthor(resp http.ResponseWriter, req *http.Request) {

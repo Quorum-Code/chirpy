@@ -35,7 +35,7 @@ func main() {
 
 	mux.HandleFunc("POST /oauth/token", apiCfg.PostToken)
 
-	mux.HandleFunc("POST /chirps", apiCfg.PostChirpsHandler)
+	mux.HandleFunc("POST /chirps", apiCfg.PostChirp)
 	mux.HandleFunc("GET /chirps", apiCfg.GetChirps)
 	mux.HandleFunc("PUT /chirps/{chirpID}", apiCfg.PutChirp)
 	mux.HandleFunc("DELETE /chirps/{chirpID}", apiCfg.DeleteChirp)

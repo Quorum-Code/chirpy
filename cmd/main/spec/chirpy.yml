@@ -57,6 +57,8 @@ paths:
           description: Posted the chirp
         '400':
           description: Failed to post the chirp
+        '401':
+          description: Unauthorized to post chirps
       security:
         - chirp_auth:
           - write:chirps
@@ -125,7 +127,7 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        '204':
           description: Deleted the chirp
         '400':
           description: Failed to delete the chirp
