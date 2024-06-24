@@ -5,8 +5,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"sync"
 
 	"golang.org/x/crypto/bcrypt"
@@ -121,7 +123,51 @@ func (db *DB) ValidLogin(email string, pass string) (User, bool) {
 	}
 }
 
-func (db *DB) UserDeleteChirp(userID, chirpID int) error {
+func (db *DB) UserPostChirp(req *http.Request) error {
+	_, err := RequestToToken(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) UserPutChirp(req *http.Request, chirpID int) error {
+	_, err := RequestToToken(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *DB) UserDeleteChirp(req *http.Request, chirpID int) error {
+	// Get auth claims
+	auth, err := RequestToToken(req)
+	if err != nil {
+		return err
+	}
+	userID, err := strconv.Atoi(auth.Claim.Subject)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(userID)
+
+	// Get chirp
+	chirp, err := db.GetChirp(chirpID)
+	if err != nil {
+		return err
+	}
+
+	// Check chirpID userID match
+	if chirp.AuthorId != userID {
+		return errors.New("unauthorized")
+	}
+
+	// Delete chirp
+	db.DeleteChirp(chirpID)
+
 	return nil
 }
 
@@ -206,7 +252,11 @@ func (db *DB) UpgradeUser(id int) error {
 }
 
 func (db *DB) DeleteChirp(cid int) {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
 	delete(db.database.Chirps, cid)
+	go db.writeDB()
 }
 
 func (db *DB) CreateChirp(id int, body string) (Chirp, error) {
@@ -282,13 +332,18 @@ func (db *DB) GetChirps() ([]Chirp, error) {
 }
 
 func (db *DB) GetChirp(id int) (Chirp, error) {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
 	if db.database.Chirps == nil {
 		return Chirp{}, errors.New("chirp map is nil")
 	}
 
 	chirp, ok := db.database.Chirps[id]
 	if !ok {
-		return Chirp{}, errors.New("ID not found in map")
+		fmt.Printf("OK: %t\n", ok)
+		fmt.Println(db.database.Chirps)
+		return Chirp{}, errors.New("chirp not found")
 	}
 
 	return chirp, nil
@@ -336,6 +391,9 @@ func (db *DB) loadDB() error {
 }
 
 func (db *DB) writeDB() error {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
 	dat, err := json.MarshalIndent(db.database, "", "  ")
 	if err != nil {
 		return err

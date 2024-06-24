@@ -12,15 +12,30 @@ import (
 )
 
 func (cfg *ApiConfig) PostChirp(resp http.ResponseWriter, req *http.Request) {
-
+	fmt.Println("postChirp")
 }
 
 func (cfg *ApiConfig) GetChirps(resp http.ResponseWriter, req *http.Request) {
-
+	fmt.Println("getChirp")
 }
 
 func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
+	cid, err := strconv.Atoi(req.PathValue("chirpID"))
+	if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	err = cfg.Db.UserPutChirp(req, cid)
+	if err.Error() == "not authorized" {
+		resp.WriteHeader(http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	resp.WriteHeader(http.StatusAccepted)
 }
 
 func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
@@ -30,12 +45,10 @@ func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = cfg.Db.UserDeleteChirp(0, cid)
-	if err.Error() == "not authorized" {
-		resp.WriteHeader(http.StatusUnauthorized)
-		return
-	} else if err != nil {
+	err = cfg.Db.UserDeleteChirp(req, cid)
+	if err != nil {
 		resp.WriteHeader(http.StatusBadRequest)
+		resp.Write([]byte(err.Error()))
 		return
 	}
 
@@ -88,12 +101,8 @@ func (cfg *ApiConfig) DeleteChirpsHandler(resp http.ResponseWriter, req *http.Re
 
 func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body string `json:"body"`
+		Body string `json:"chirpBody"`
 	}
-
-	fmt.Println("Post Chirps")
-
-	// verify authorization
 
 	decoder := json.NewDecoder(req.Body)
 	p := parameters{}

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,6 +22,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+func ValidClaim() (bool, error) {
+	return false, nil
+}
+
 func RequestToToken(req *http.Request) (AuthData, error) {
 	t := req.Header.Get("Authorization")
 
@@ -34,6 +39,7 @@ func RequestToToken(req *http.Request) (AuthData, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
 	if err != nil {
+		fmt.Printf("Authorization: %s\n", t)
 		return AuthData{}, err
 	}
 

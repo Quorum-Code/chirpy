@@ -33,7 +33,7 @@ paths:
           description: Created the account
         '400':
           description: Failed to Create account
-  /api/chirps:
+  /chirps:
     post:
       tags:
         - chirp
@@ -74,7 +74,7 @@ paths:
       security:
         - chirp_auth:
           - write:chirps
-  /api/chirps{chirpId}:
+  /chirps/{chirpId}:
     put:
       tags:
         - chirp
@@ -82,7 +82,7 @@ paths:
       consumes:
         - application/json
       parameters:
-        - id: chirpId
+        - name: chirpId
           in: path
           description: ID of the chirp to update
           required: true
@@ -106,6 +106,29 @@ paths:
           description: Updated the chirp
         '400':
           description: Failed to update the chirp
+      security:
+        - chirp_auth:
+          - write:chirps
+    delete:
+      tags:
+        - chirp
+      summary: Deletes a chirp
+      consumes:
+        - application/json
+      operationId: deleteChirp
+      parameters:
+        - name: chirpId
+          in: path
+          description: Pet id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Deleted the chirp
+        '400':
+          description: Failed to delete the chirp
       security:
         - chirp_auth:
           - write:chirps
