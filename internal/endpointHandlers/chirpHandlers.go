@@ -85,12 +85,14 @@ func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
 
 // Handles request to delete chirp by ID
 func (cfg *ApiConfig) DeleteChirp(resp http.ResponseWriter, req *http.Request) {
+	// Get chirpID
 	cid, err := strconv.Atoi(req.PathValue("chirpID"))
 	if err != nil {
 		resp.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	// Try to delete chirp
 	err = cfg.Db.UserDeleteChirp(req, cid)
 	if err != nil {
 		resp.WriteHeader(http.StatusBadRequest)
