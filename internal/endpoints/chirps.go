@@ -63,6 +63,38 @@ func (cfg *ApiConfig) GetChirps(resp http.ResponseWriter, req *http.Request) {
 	fmt.Println("getChirp")
 }
 
+func (cfg *ApiConfig) GetChirpByID(resp http.ResponseWriter, req *http.Request) {
+	// Parse request
+	cid, err := strconv.Atoi(req.PathValue("chirpID"))
+	if err != nil {
+		resp.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Find chirp
+	chirp, err := cfg.Db.GetChirp(cid)
+	if err != nil {
+		if err == database.ErrChirpNotFound {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		} else {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Get chirp info as json
+	dat, err := json.MarshalIndent(&chirp, "", "  ")
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Return chirp data and status
+	resp.Write(dat)
+	resp.WriteHeader(http.StatusAccepted)
+}
+
 func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
 	cid, err := strconv.Atoi(req.PathValue("chirpID"))
 	if err != nil {

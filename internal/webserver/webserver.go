@@ -67,6 +67,7 @@ func StartServer(isDebug bool) {
 	// Chirps handlers
 	mux.HandleFunc("POST /chirps", apiCfg.PostChirp)
 	mux.HandleFunc("GET /chirps", apiCfg.GetChirps)
+	mux.HandleFunc("GET /chirps/{chirpID}", apiCfg.GetChirpByID)
 	mux.HandleFunc("PUT /chirps/{chirpID}", apiCfg.PutChirp)
 	mux.HandleFunc("DELETE /chirps/{chirpID}", apiCfg.DeleteChirp)
 

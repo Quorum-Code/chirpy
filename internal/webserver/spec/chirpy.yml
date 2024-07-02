@@ -77,6 +77,25 @@ paths:
         - chirp_auth:
           - write:chirps
   /chirps/{chirpId}:
+    get:
+      tags:
+        - chirp
+      summary: Gets a chirp
+      consumes:
+        - application/json
+      parameters:
+        - name: chirpId
+          in: path
+          description: ID of the chirp to get
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Got the chirp
+        '404':
+          description: Chirp not found
     put:
       tags:
         - chirp
