@@ -1,4 +1,4 @@
-package endpointhandlers
+package endpoints
 
 import (
 	"fmt"
@@ -18,7 +18,6 @@ func (f *FakeRespWriter) Write([]byte) (int, error) {
 }
 
 func (f *FakeRespWriter) WriteHeader(statusCode int) {
-	return
 }
 
 func TestFunc(t *testing.T) {

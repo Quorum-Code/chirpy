@@ -1,4 +1,4 @@
-package endpointhandlers
+package endpoints
 
 import (
 	"fmt"

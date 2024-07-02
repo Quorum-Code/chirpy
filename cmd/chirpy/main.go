@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Quorum-Code/chirpy/internal"
-	endpointhandlers "github.com/Quorum-Code/chirpy/internal/endpointhandlers"
+	endpointhandlers "github.com/Quorum-Code/chirpy/internal/endpoints"
 	"github.com/flowchartsman/swaggerui"
 	"github.com/joho/godotenv"
 )
