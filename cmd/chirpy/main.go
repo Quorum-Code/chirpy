@@ -2,14 +2,14 @@ package main
 
 import (
 	_ "embed"
+
 	"fmt"
 	"net/http"
 
+	"github.com/Quorum-Code/chirpy/internal"
+	endpointhandlers "github.com/Quorum-Code/chirpy/internal/endpointhandlers"
 	"github.com/flowchartsman/swaggerui"
 	"github.com/joho/godotenv"
-
-	"github.com/Quorum-Code/chirpy/internal"
-	endpointhandlers "github.com/Quorum-Code/chirpy/internal/endpointHandlers"
 )
 
 //go:embed spec/chirpy.yml
