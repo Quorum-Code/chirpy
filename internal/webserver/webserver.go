@@ -17,7 +17,7 @@ import (
 //go:embed spec/chirpy.yml
 var spec []byte
 var root = "../../."
-var dbpath = "../../database.json"
+var dbpath = "./database.json"
 
 func StartServer(isDebug bool) {
 	fmt.Println("starting web server")
@@ -33,17 +33,18 @@ func StartServer(isDebug bool) {
 	// Alias to remove "/app"
 	handler := http.StripPrefix("/app", fileServer)
 
-	// Get database file
-	dbreader, err := os.Open(dbpath)
-	if err != nil {
-		return
-	}
-
 	var db *database.DB
 	if isDebug {
 		// If debug Initialize clean DB
 		db = database.InitCleanDB()
 	} else {
+		// Get database file
+		dbreader, err := os.Open(dbpath)
+		if err != nil {
+			fmt.Println("couldnt open db file")
+			return
+		}
+
 		// Initialize database
 		db, err = database.InitDB(dbreader)
 		if err != nil {
@@ -74,7 +75,6 @@ func StartServer(isDebug bool) {
 	mux.HandleFunc("GET /api/healthz", apiCfg.HealthzHandler)
 	mux.HandleFunc("/api/reset", apiCfg.MiddlewareMetricsReset)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.AdminMetricsHandler)
-	mux.HandleFunc("POST /api/validate_chirp", endpoints.ValidateChirpHandler)
 	mux.HandleFunc("POST /api/chirps", apiCfg.PostChirpsHandler)
 	mux.HandleFunc("GET /api/chirps", apiCfg.GetChirpsHandler)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.GetChirpByIDHandler)
@@ -96,7 +96,7 @@ func StartServer(isDebug bool) {
 
 	// Start server
 	fmt.Println("serving SwaggerUI at: localhost:8000/swagger/")
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if err != nil {
 		fmt.Println("ERROR: ", err)
 		return

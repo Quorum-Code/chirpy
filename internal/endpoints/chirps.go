@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Quorum-Code/chirpy/internal"
 	"github.com/Quorum-Code/chirpy/internal/database"
 )
 
@@ -71,13 +70,16 @@ func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Update chirp
 	err = cfg.Db.UserPutChirp(req, cid)
-	if err.Error() == "not authorized" {
-		resp.WriteHeader(http.StatusUnauthorized)
-		return
-	} else if err != nil {
-		resp.WriteHeader(http.StatusBadRequest)
-		return
+	if err != nil {
+		if err == database.ErrNotAuthorized {
+			resp.WriteHeader(http.StatusUnauthorized)
+			return
+		} else {
+			resp.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Return 201
@@ -273,49 +275,43 @@ func (cfg *ApiConfig) GetChirpByIDHandler(resp http.ResponseWriter, req *http.Re
 	resp.Write(dat)
 }
 
-func ValidateChirpHandler(resp http.ResponseWriter, req *http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
+// func ValidateChirpHandler(resp http.ResponseWriter, req *http.Request) {
+// 	type parameters struct {
+// 		Body string `json:"body"`
+// 	}
 
-	decoder := json.NewDecoder(req.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		fmt.Printf("Error decoding parameters: %s", err)
-		resp.WriteHeader(500)
-	}
+// 	decoder := json.NewDecoder(req.Body)
+// 	params := parameters{}
+// 	err := decoder.Decode(&params)
+// 	if err != nil {
+// 		fmt.Printf("Error decoding parameters: %s", err)
+// 		resp.WriteHeader(500)
+// 	}
 
-	type returnVals struct {
-		// CreatedAt    time.Time `json:"created_at"`
-		// ID           int       `json:"id"`
-		// Valid        bool      `json:"valid"`
-		Cleaned_Body string `json:"cleaned_body"`
-	}
+// 	type returnVals struct {
+// 		Cleaned_Body string `json:"cleaned_body"`
+// 	}
 
-	//valid := false
-	if len(params.Body) <= 140 {
-		//valid = true
-		resp.WriteHeader(200)
+// 	//valid := false
+// 	if len(params.Body) <= 140 {
+// 		//valid = true
+// 		resp.WriteHeader(200)
 
-	} else {
-		resp.WriteHeader(400)
-	}
+// 	} else {
+// 		resp.WriteHeader(400)
+// 	}
 
-	respBody := returnVals{
-		// CreatedAt:    time.Now(),
-		// ID:           123,
-		// Valid:        valid,
-		Cleaned_Body: internal.StripProfane(params.Body),
-	}
-	fmt.Println(params.Body)
-	dat, err := json.Marshal(respBody)
-	if err != nil {
-		fmt.Printf("Error marshalling JSON: %s", err)
-		resp.WriteHeader(500)
-		return
-	}
+// 	respBody := returnVals{
+// 		Cleaned_Body: internal.StripProfane(params.Body),
+// 	}
+// 	fmt.Println(params.Body)
+// 	dat, err := json.Marshal(respBody)
+// 	if err != nil {
+// 		fmt.Printf("Error marshalling JSON: %s", err)
+// 		resp.WriteHeader(500)
+// 		return
+// 	}
 
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write(dat)
-}
+// 	resp.Header().Set("Content-Type", "application/json")
+// 	resp.Write(dat)
+// }

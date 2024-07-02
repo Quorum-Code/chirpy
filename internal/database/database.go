@@ -32,6 +32,9 @@ type Database struct {
 	Hashes        map[int][]byte  `json:"hashes"`
 }
 
+var ErrChirpNotFound error = errors.New("chirp not found")
+var ErrUserNotFound error = errors.New("user not found")
+
 type Chirp struct {
 	Body     string `json:"body"`
 	Id       int    `json:"id"`
@@ -58,9 +61,14 @@ func InitDB(reader io.Reader) (*DB, error) {
 	db := DB{
 		database:    database,
 		mux:         &sync.RWMutex{},
-		path:        "",
+		path:        "./database.json",
 		polkaApiKey: os.Getenv("POLKA_SECRET"),
 		JWT_SECRET:  os.Getenv("JWT_SECRET"),
+	}
+
+	err := db.loadDB()
+	if err != nil {
+		return nil, err
 	}
 
 	return &db, nil
@@ -122,20 +130,47 @@ func InitCleanDB() *DB {
 // 	return &db, nil
 // }
 
-func (db *DB) UserPostChirp(req *http.Request) error {
-	_, err := RequestToToken(req)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (db *DB) UserPutChirp(req *http.Request, chirpID int) error {
-	_, err := RequestToToken(req)
+	// Get chirp
+	chirp, err := db.GetChirp(chirpID)
 	if err != nil {
 		return err
 	}
+
+	// Get caller auths
+	auth, err := RequestToToken(req)
+	if err != nil {
+		return err
+	}
+	authID, err := strconv.Atoi(auth.Claim.Subject)
+	if err != nil {
+		return err
+	}
+
+	// Only allow author or admin to edit chirps
+	if chirp.AuthorId != authID {
+		return ErrNotAuthorized
+	}
+
+	// Get updated chirp body from request
+	type body struct {
+		ChirpBody string `json:"chirpBody"`
+	}
+	decoder := json.NewDecoder(req.Body)
+	b := body{}
+	err = decoder.Decode(&b)
+	if err != nil {
+		return errors.New("bad request")
+	}
+
+	// Write to database
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	chirp.Body = b.ChirpBody
+	db.database.Chirps[chirp.Id] = chirp
+
+	go db.writeDB()
 
 	return nil
 }
@@ -330,33 +365,33 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 	if !ok {
 		fmt.Printf("OK: %t\n", ok)
 		fmt.Println(db.database.Chirps)
-		return Chirp{}, errors.New("chirp not found")
+		return Chirp{}, ErrChirpNotFound
 	}
 
 	return chirp, nil
 }
 
-// func (db *DB) freshEnsureDB() error {
-// 	dat, err := json.Marshal(db.database)
-// 	if err != nil {
-// 		return err
-// 	}
+func (db *DB) freshEnsureDB() error {
+	dat, err := json.Marshal(db.database)
+	if err != nil {
+		return err
+	}
 
-// 	os.WriteFile(db.path, dat, 0777)
-// 	return nil
-// }
+	os.WriteFile(db.path, dat, 0777)
+	return nil
+}
 
-// func (db *DB) ensureDB() error {
-// 	_, err := os.Stat(db.path)
-// 	if err != nil {
-// 		dat, err := json.Marshal(db.database)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		os.WriteFile(db.path, dat, 0777)
-// 	}
-// 	return nil
-// }
+func (db *DB) ensureDB() error {
+	_, err := os.Stat(db.path)
+	if err != nil {
+		dat, err := json.Marshal(db.database)
+		if err != nil {
+			return err
+		}
+		os.WriteFile(db.path, dat, 0777)
+	}
+	return nil
+}
 
 func (db *DB) loadDB() error {
 	db.mux.Lock()

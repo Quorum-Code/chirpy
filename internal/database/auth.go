@@ -13,6 +13,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var ErrNotAuthorized error = errors.New("not authorized")
+
 type AuthData struct {
 	Token *jwt.Token
 	Claim Claims
