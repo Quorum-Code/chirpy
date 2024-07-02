@@ -1,4 +1,4 @@
-package internal
+package database
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthData struct {
@@ -22,13 +23,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func ValidClaim() (bool, error) {
-	return false, nil
-}
-
 func RequestToToken(req *http.Request) (AuthData, error) {
 	t := req.Header.Get("Authorization")
 
+	// Remove "Bearer" prefix
 	split := strings.Split(t, " ")
 	if len(split) > 1 {
 		t = split[1]
@@ -91,4 +89,42 @@ func (db *DB) OAuth2Password(email string, password string) (OAuth2Access, error
 	}
 
 	return OAuth2Access{AccessToken: ats, RefreshToken: rts, TokenType: "Bearer", ExpiresIn: 3600}, nil
+}
+
+func (db *DB) IsPolkaKey(key string) bool {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	return key == db.polkaApiKey
+}
+
+func (db *DB) ValidLogin(email string, pass string) (User, bool) {
+	user, ok := db.getUserByEmail(email)
+	if !ok {
+		return User{}, false
+	}
+
+	_, ok = db.database.Hashes[user.Id]
+	if !ok {
+		return User{}, false
+	}
+
+	err := bcrypt.CompareHashAndPassword(db.database.Hashes[user.Id], []byte(pass))
+	if err != nil {
+		return User{}, false
+	} else {
+		return user, true
+	}
+}
+
+func (db *DB) IsEmailUsed(email string) bool {
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	for _, user := range db.database.Users {
+		if user.Email == email {
+			return true
+		}
+	}
+	return false
 }

@@ -1,8 +1,10 @@
 package endpoints
 
-import "github.com/Quorum-Code/chirpy/internal"
+import (
+	"github.com/Quorum-Code/chirpy/internal/database"
+)
 
 type ApiConfig struct {
 	FileserverHits int
-	Db             internal.DB
+	Db             database.DB
 }

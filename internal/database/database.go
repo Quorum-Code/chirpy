@@ -1,10 +1,10 @@
-package internal
+package database
 
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -23,6 +23,15 @@ type DB struct {
 	polkaApiKey string
 }
 
+type Database struct {
+	NextUID       int             `json:"nextuid"`
+	NextCID       int             `json:"nextcid"`
+	Chirps        map[int]Chirp   `json:"chirps"`
+	Users         map[int]User    `json:"users"`
+	RefreshTokens map[string]bool `json:"refresh_tokens"`
+	Hashes        map[int][]byte  `json:"hashes"`
+}
+
 type Chirp struct {
 	Body     string `json:"body"`
 	Id       int    `json:"id"`
@@ -35,93 +44,83 @@ type User struct {
 	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
-type Database struct {
-	NextUID       int             `json:"nextuid"`
-	NextCID       int             `json:"nextcid"`
-	Chirps        map[int]Chirp   `json:"chirps"`
-	Users         map[int]User    `json:"users"`
-	RefreshTokens map[string]bool `json:"refresh_tokens"`
-	Hashes        map[int][]byte  `json:"hashes"`
-}
+// Initialize db from io.Reader
+func InitDB(reader io.Reader) (*DB, error) {
+	database := &Database{
+		Chirps:        make(map[int]Chirp),
+		NextCID:       1,
+		Users:         make(map[int]User),
+		NextUID:       1,
+		Hashes:        make(map[int][]byte),
+		RefreshTokens: make(map[string]bool),
+	}
 
-func NewDB(path string) (*DB, error) {
-	database := &Database{Chirps: make(map[int]Chirp), NextCID: 1, Users: make(map[int]User), NextUID: 1}
-	database.Hashes = make(map[int][]byte)
-	database.RefreshTokens = make(map[string]bool)
-
-	db := DB{database: database,
+	db := DB{
+		database:    database,
 		mux:         &sync.RWMutex{},
-		path:        path,
+		path:        "",
 		polkaApiKey: os.Getenv("POLKA_SECRET"),
-		JWT_SECRET:  os.Getenv("JWT_SECRET")}
-
-	dbg := flag.Bool("debug", false, "Enable debug mode")
-	flag.Parse()
-
-	var err error
-	if *dbg {
-		fmt.Println("Starting in Debug Mode")
-		err = db.freshEnsureDB()
-	} else {
-		fmt.Println("Starting in Normal Mode")
-		err = db.ensureDB()
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.loadDB()
-	if err != nil {
-		return nil, err
+		JWT_SECRET:  os.Getenv("JWT_SECRET"),
 	}
 
 	return &db, nil
 }
 
-func (db *DB) IsPolkaKey(key string) bool {
-	db.mux.RLock()
-	defer db.mux.RUnlock()
-
-	return key == db.polkaApiKey
-}
-
-func (db *DB) AddRefreshToken(refreshToken string) {
-	db.mux.Lock()
-	defer db.mux.Unlock()
-
-	db.database.RefreshTokens[refreshToken] = true
-}
-
-func (db *DB) RevokeRefreshToken(refreshToken string) {
-	db.mux.Lock()
-	defer db.mux.Unlock()
-
-	delete(db.database.RefreshTokens, refreshToken)
-}
-
-func (db *DB) IsValidRefreshToken(refreshToken string) bool {
-	_, ok := db.database.RefreshTokens[refreshToken]
-	return ok
-}
-
-func (db *DB) ValidLogin(email string, pass string) (User, bool) {
-	user, ok := db.getUserByEmail(email)
-	if !ok {
-		return User{}, false
+// Initialize empty db
+func InitCleanDB() *DB {
+	database := &Database{
+		Chirps:        make(map[int]Chirp),
+		NextCID:       1,
+		Users:         make(map[int]User),
+		NextUID:       1,
+		Hashes:        make(map[int][]byte),
+		RefreshTokens: make(map[string]bool),
 	}
 
-	_, ok = db.database.Hashes[user.Id]
-	if !ok {
-		return User{}, false
+	db := DB{
+		database:    database,
+		mux:         &sync.RWMutex{},
+		path:        "",
+		polkaApiKey: os.Getenv("POLKA_SECRET"),
+		JWT_SECRET:  os.Getenv("JWT_SECRET"),
 	}
 
-	err := bcrypt.CompareHashAndPassword(db.database.Hashes[user.Id], []byte(pass))
-	if err != nil {
-		return User{}, false
-	} else {
-		return user, true
-	}
+	return &db
 }
+
+// func NewDB(path string) (*DB, error) {
+// 	database := &Database{Chirps: make(map[int]Chirp), NextCID: 1, Users: make(map[int]User), NextUID: 1}
+// 	database.Hashes = make(map[int][]byte)
+// 	database.RefreshTokens = make(map[string]bool)
+
+// 	db := DB{database: database,
+// 		mux:         &sync.RWMutex{},
+// 		path:        path,
+// 		polkaApiKey: os.Getenv("POLKA_SECRET"),
+// 		JWT_SECRET:  os.Getenv("JWT_SECRET")}
+
+// 	dbg := flag.Bool("debug", false, "Enable debug mode")
+// 	flag.Parse()
+
+// 	var err error
+// 	if *dbg {
+// 		fmt.Println("Starting in Debug Mode")
+// 		err = db.freshEnsureDB()
+// 	} else {
+// 		fmt.Println("Starting in Normal Mode")
+// 		err = db.ensureDB()
+// 	}
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	err = db.loadDB()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return &db, nil
+// }
 
 func (db *DB) UserPostChirp(req *http.Request) error {
 	_, err := RequestToToken(req)
@@ -174,18 +173,6 @@ func (db *DB) UserDeleteChirp(req *http.Request, chirpID int) error {
 func (db *DB) GetUserById(id int) (*User, bool) {
 	user, ok := db.database.Users[id]
 	return &user, ok
-}
-
-func (db *DB) IsEmailUsed(email string) bool {
-	db.mux.RLock()
-	defer db.mux.RUnlock()
-
-	for _, user := range db.database.Users {
-		if user.Email == email {
-			return true
-		}
-	}
-	return false
 }
 
 func (db *DB) getUserByEmail(email string) (User, bool) {
@@ -349,27 +336,27 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 	return chirp, nil
 }
 
-func (db *DB) freshEnsureDB() error {
-	dat, err := json.Marshal(db.database)
-	if err != nil {
-		return err
-	}
+// func (db *DB) freshEnsureDB() error {
+// 	dat, err := json.Marshal(db.database)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	os.WriteFile(db.path, dat, 0777)
-	return nil
-}
+// 	os.WriteFile(db.path, dat, 0777)
+// 	return nil
+// }
 
-func (db *DB) ensureDB() error {
-	_, err := os.Stat(db.path)
-	if err != nil {
-		dat, err := json.Marshal(db.database)
-		if err != nil {
-			return err
-		}
-		os.WriteFile(db.path, dat, 0777)
-	}
-	return nil
-}
+// func (db *DB) ensureDB() error {
+// 	_, err := os.Stat(db.path)
+// 	if err != nil {
+// 		dat, err := json.Marshal(db.database)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		os.WriteFile(db.path, dat, 0777)
+// 	}
+// 	return nil
+// }
 
 func (db *DB) loadDB() error {
 	db.mux.Lock()

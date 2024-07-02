@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Quorum-Code/chirpy/internal"
+	"github.com/Quorum-Code/chirpy/internal/database"
 )
 
 func (cfg *ApiConfig) PostChirp(resp http.ResponseWriter, req *http.Request) {
@@ -17,7 +18,7 @@ func (cfg *ApiConfig) PostChirp(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check valid user
-	auth, err := internal.RequestToToken(req)
+	auth, err := database.RequestToToken(req)
 	if err != nil {
 		resp.WriteHeader(http.StatusUnauthorized)
 		resp.Write([]byte(err.Error()))
@@ -115,7 +116,7 @@ func (cfg *ApiConfig) DeleteChirpsHandler(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	authData, err := internal.RequestToToken(req)
+	authData, err := database.RequestToToken(req)
 	if err != nil {
 		resp.WriteHeader(500)
 		resp.Write([]byte(err.Error()))
@@ -171,7 +172,7 @@ func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	authData, err := internal.RequestToToken(req)
+	authData, err := database.RequestToToken(req)
 	if err != nil {
 		resp.WriteHeader(500)
 		resp.Write([]byte(err.Error()))
@@ -207,7 +208,7 @@ func (cfg *ApiConfig) PostChirpsHandler(resp http.ResponseWriter, req *http.Requ
 func (cfg *ApiConfig) GetChirpsHandler(resp http.ResponseWriter, req *http.Request) {
 	sid := req.URL.Query().Get("author_id")
 	id, err := strconv.Atoi(sid)
-	var chirps []internal.Chirp
+	var chirps []database.Chirp
 
 	if err != nil {
 		// no id
