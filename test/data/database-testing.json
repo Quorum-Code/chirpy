@@ -1,0 +1,72 @@
+{
+    "nextuid": 7,
+    "nextcid": 8,
+    "chirps": {
+      "3": {
+        "body": "a chirp",
+        "id": 3,
+        "author_id": 1
+      },
+      "4": {
+        "body": "some other chirp with a tpyo",
+        "id": 4,
+        "author_id": 1
+      },
+      "5": {
+        "body": "string",
+        "id": 5,
+        "author_id": 1
+      },
+      "6": {
+        "body": "string",
+        "id": 6,
+        "author_id": 1
+      },
+      "7": {
+        "body": "example updated asdasdasdasd chirp",
+        "id": 7,
+        "author_id": 6
+      }
+    },
+    "users": {
+      "1": {
+        "email": "asd",
+        "id": 1,
+        "is_chirpy_red": false
+      },
+      "2": {
+        "email": "asd2",
+        "id": 2,
+        "is_chirpy_red": false
+      },
+      "3": {
+        "email": "lkj",
+        "id": 3,
+        "is_chirpy_red": false
+      },
+      "4": {
+        "email": "123",
+        "id": 4,
+        "is_chirpy_red": false
+      },
+      "5": {
+        "email": "qwe",
+        "id": 5,
+        "is_chirpy_red": false
+      },
+      "6": {
+        "email": "zxc",
+        "id": 6,
+        "is_chirpy_red": false
+      }
+    },
+    "refresh_tokens": {},
+    "hashes": {
+      "1": "JDJhJDEwJHlPa2c3MjN4eDBMZHBac0J1ZkJGbU9kYjlELjlWcTVmbmt0YTRlUW9aVWV0bnJRTG9SbVVH",
+      "2": "JDJhJDEwJHp3YVVMc3pxU0Y5NGxLU09CT1hjSWV3WEdrSUdtY1BsQ2FBREE3RC9UOHNWUnRhQkZsNnZx",
+      "3": "JDJhJDEwJE9sNHJVU25ONmJ0VndWR2hIYk8yci56Z0VIVmZpb2lpekwwTWZ5OG5hRVVNR3dOSWd4WkxT",
+      "4": "JDJhJDEwJG5sL0owcmNELk5ncEpoSXB4RmJGWi51OHRBN3RrUzB5U3Z2NkNQc05Cd2V1bS5ZNW82SGNT",
+      "5": "JDJhJDEwJGxEeEFBSFVGbGVLdW9HTHdrcU5MZWVwWWE1QWlHQlEzaUlJWC5Pb2hsQjFydTI3VExiSzFH",
+      "6": "JDJhJDEwJHF4eE9NdkYuaU54MS42Njd0eVZIV095T3dQUGFvWVhzMW5SbEV1SDMvTzRBSFpjdGlzNXJH"
+    }
+  }
