@@ -19,7 +19,10 @@ var spec []byte
 var root = "../../."
 var dbpath = "./database.json"
 
-func StartServer(isDebug bool) {
+var ChirpyFolder = "chirpy"
+var SpecYML = "chirpy.yml"
+
+func StartServer(isDebug bool) *http.Server {
 	fmt.Println("starting web server")
 
 	// Load env variables
@@ -39,14 +42,14 @@ func StartServer(isDebug bool) {
 		dbreader, err := os.Open(dbpath)
 		if err != nil {
 			fmt.Println("couldnt open db file")
-			return
+			return nil
 		}
 
 		// Initialize database
 		db, err = database.InitDB(dbreader)
 		if err != nil {
 			fmt.Println(err.Error())
-			return
+			return nil
 		}
 	}
 	apiCfg.Db = *db
@@ -88,17 +91,55 @@ func StartServer(isDebug bool) {
 	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.PostPolkaWebhook)
 
 	// Include swaggerui
-	mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
+	if spec != nil {
+		mux.Handle("/swagger/", http.StripPrefix("/swagger", swaggerui.Handler(spec)))
+		fmt.Println("serving SwaggerUI at: localhost:8000/swagger/")
+	}
 
 	// Final server setup
 	corsMux := internal.MiddlewareCors(mux)
 	server := http.Server{Addr: ":8000", Handler: corsMux}
 
 	// Start server
-	fmt.Println("serving SwaggerUI at: localhost:8000/swagger/")
-	err := server.ListenAndServe()
-	if err != nil {
-		fmt.Println("ERROR: ", err)
-		return
-	}
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+	}()
+
+	return &server
 }
+
+// func getServerSpecs() ([]byte, error) {
+// 	// User home
+// 	userhome, err := os.UserHomeDir()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Join
+// 	specpath := filepath.Join(userhome, ChirpyFolder, SpecYML)
+
+// 	// Get file
+// 	file, err := os.Open(specpath)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer file.Close()
+
+// 	// File size to allocate byte slice capacity
+// 	stat, err := file.Stat()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// Read file into buffer
+// 	buffer := make([]byte, stat.Size())
+// 	_, err = bufio.NewReader(file).Read(buffer)
+// 	if err != nil && err != io.EOF {
+// 		return nil, err
+// 	}
+
+// 	return buffer, nil
+// }
