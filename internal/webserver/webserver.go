@@ -30,9 +30,6 @@ func StartServer(isDebug bool) {
 	fileServer := http.FileServer(http.Dir(root))
 	apiCfg := endpoints.ApiConfig{}
 
-	// Alias to remove "/app"
-	handler := http.StripPrefix("/app", fileServer)
-
 	var db *database.DB
 	if isDebug {
 		// If debug Initialize clean DB
@@ -52,7 +49,6 @@ func StartServer(isDebug bool) {
 			return
 		}
 	}
-
 	apiCfg.Db = *db
 
 	// Index url handler
@@ -71,7 +67,10 @@ func StartServer(isDebug bool) {
 	mux.HandleFunc("PUT /chirps/{chirpID}", apiCfg.PutChirp)
 	mux.HandleFunc("DELETE /chirps/{chirpID}", apiCfg.DeleteChirp)
 
+	// Alias to remove "/app"
+	handler := http.StripPrefix("/app", fileServer)
 	mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(handler))
+
 	mux.HandleFunc("GET /api/metrics", apiCfg.GetMetricsHandler)
 	mux.HandleFunc("GET /api/healthz", apiCfg.HealthzHandler)
 	mux.HandleFunc("/api/reset", apiCfg.MiddlewareMetricsReset)
