@@ -36,7 +36,7 @@ type User struct {
 }
 
 // Initialize db from io.Reader
-func InitDB(reader io.Reader) (*DB, error) {
+func InitDB(reader io.Reader, writepath string) (*DB, error) {
 	database := &Database{
 		Chirps:        make(map[int]Chirp),
 		NextCID:       1,
@@ -49,7 +49,7 @@ func InitDB(reader io.Reader) (*DB, error) {
 	db := DB{
 		database:    database,
 		mux:         &sync.RWMutex{},
-		path:        "./database.json",
+		path:        writepath,
 		polkaApiKey: os.Getenv("POLKA_SECRET"),
 		JWT_SECRET:  os.Getenv("JWT_SECRET"),
 	}

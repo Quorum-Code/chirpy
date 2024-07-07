@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/Quorum-Code/chirpy/internal"
 	"github.com/Quorum-Code/chirpy/internal/database"
@@ -17,10 +18,11 @@ import (
 //go:embed spec/chirpy.yml
 var spec []byte
 var root = "../../."
-var dbpath = "./database.json"
 
-var ChirpyFolder = "chirpy"
-var SpecYML = "chirpy.yml"
+var ChirpyFolder = ".chirpy"
+var DatabaseFile = "database.json"
+var TestingDatabaseFile = "database-testing.json"
+var TestingDatabasePath = "./test/data/database-testing.json"
 
 func StartServer(cfg ServerConfig) *http.Server {
 	fmt.Println("starting web server")
@@ -33,26 +35,48 @@ func StartServer(cfg ServerConfig) *http.Server {
 	fileServer := http.FileServer(http.Dir(root))
 	apiCfg := endpoints.ApiConfig{}
 
-	var db *database.DB
 	if cfg.IsDebug {
-		// If debug Initialize clean DB
-		db = database.InitCleanDB()
+		// Load empty database
+		apiCfg.Db = *database.InitCleanDB()
 	} else {
+		var path string
+		if cfg.IsTesting {
+			cwd, err := os.Getwd()
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				return nil
+			}
+
+			path = filepath.Join(cwd, TestingDatabaseFile)
+		} else {
+			// Get user directory
+			home, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Println(err.Error())
+				return nil
+			}
+
+			// join path
+			path = filepath.Join(home, ChirpyFolder, DatabaseFile)
+		}
+
 		// Get database file
-		dbreader, err := os.Open(dbpath)
+		reader, err := os.Open(path)
 		if err != nil {
-			fmt.Println("couldnt open db file")
+			dir, _ := os.Getwd()
+
+			fmt.Printf("%s, couldn't open db file, %s", err.Error(), dir)
 			return nil
 		}
 
 		// Initialize database
-		db, err = database.InitDB(dbreader)
+		db, err := database.InitDB(reader, path)
 		if err != nil {
 			fmt.Println(err.Error())
 			return nil
 		}
+		apiCfg.Db = *db
 	}
-	apiCfg.Db = *db
 
 	// Index url handler
 	mux.HandleFunc("/", apiCfg.IndexHandler)

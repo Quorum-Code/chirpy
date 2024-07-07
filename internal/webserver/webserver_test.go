@@ -5,7 +5,9 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	server := StartServer(false)
+	server := StartServer(ServerConfig{
+		IsTesting: true,
+	})
 
 	if server == nil {
 		t.Error("server failed to start")
