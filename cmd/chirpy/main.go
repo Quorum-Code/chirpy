@@ -21,11 +21,13 @@ var HelpText = `
 
 func main() {
 	// Pass Server Config
-	rcfg := RunConfig{}
-	rcfg.Debug = *flag.Bool("debug", false, "Enable debug mode")
+	svrcfg := webserver.ServerConfig{
+		IsDebug:   *flag.Bool("debug", false, "Enable debug mode"),
+		IsTesting: *flag.Bool("testing", false, "Enable for testing"),
+	}
 
 	// Start server
-	_ = webserver.StartServer(rcfg.Debug)
+	_ = webserver.StartServer(svrcfg)
 
 	// Start cli reader
 	readCommandLine()

@@ -22,7 +22,7 @@ var dbpath = "./database.json"
 var ChirpyFolder = "chirpy"
 var SpecYML = "chirpy.yml"
 
-func StartServer(isDebug bool) *http.Server {
+func StartServer(cfg ServerConfig) *http.Server {
 	fmt.Println("starting web server")
 
 	// Load env variables
@@ -34,7 +34,7 @@ func StartServer(isDebug bool) *http.Server {
 	apiCfg := endpoints.ApiConfig{}
 
 	var db *database.DB
-	if isDebug {
+	if cfg.IsDebug {
 		// If debug Initialize clean DB
 		db = database.InitCleanDB()
 	} else {
