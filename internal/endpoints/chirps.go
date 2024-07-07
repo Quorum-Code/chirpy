@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,7 +75,7 @@ func (cfg *ApiConfig) GetChirpByID(resp http.ResponseWriter, req *http.Request) 
 	// Find chirp
 	chirp, err := cfg.Db.GetChirp(cid)
 	if err != nil {
-		if err == database.ErrChirpNotFound {
+		if errors.Is(err, database.ErrChirpNotFound) {
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		} else {
@@ -105,7 +106,7 @@ func (cfg *ApiConfig) PutChirp(resp http.ResponseWriter, req *http.Request) {
 	// Update chirp
 	err = cfg.Db.UserPutChirp(req, cid)
 	if err != nil {
-		if err == database.ErrNotAuthorized {
+		if errors.Is(err, database.ErrNotAuthorized) {
 			resp.WriteHeader(http.StatusUnauthorized)
 			return
 		} else {
